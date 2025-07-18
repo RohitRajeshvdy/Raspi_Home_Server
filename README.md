@@ -36,6 +36,7 @@ A self-hosted, Docker-based home server running on Raspberry Pi 4. Includes medi
 ## 🛠️ Hardware Used
 
 * Raspberry Pi 4 (4GB or 8GB)
+* SD Card for OS
 * External SSD/HDD (formatted to ext4)
 * Ethernet connection to router (recommended)
 
