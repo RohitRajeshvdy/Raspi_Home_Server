@@ -21,13 +21,17 @@ A self-hosted, Docker-based home server running on Raspberry Pi 4. Includes medi
    * [Uptime Kuma](#-uptime-kuma)
    * [Immich](#-immich)
    * [Jellyfin + Jellyseerr](#-jellyfin--jellyseerr)
-   * [qBittorrent](#-qbittorrent)
-   * [Prowlarr](#-prowlarr)
-   * [Radarr](#-radarr)
-   * [Sonarr](#-sonarr)
+   * [\*arr Stack + qBittorrent](#-arr-stack--qbittorrent-setup)
+
+     * [qBittorrent](#-qbittorrent)
+     * [Prowlarr](#-prowlarr)
+     * [Radarr](#-radarr)
+     * [Sonarr](#-sonarr)
+   * [Homarr](#-homarr)
 8. [Backups & Data Safety](#-backups--data-safety)
 
 ---
+
 
 ## 🛠️ Hardware Used
 
