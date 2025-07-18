@@ -664,6 +664,39 @@ Set up your admin accounts and start configuring media libraries and request han
 
 ---
 
+## 🏠 Homarr
+
+### 📂 Step 1: Navigate to the Homarr directory
+
+```bash
+cd ~/docker/homarr
+```
+
+### ▶️ Step 2: Deploy Homarr
+
+```bash
+docker compose up -d
+```
+
+> No file edits required — it's plug and play.
+
+### 🌐 Step 3: Open the Dashboard
+
+```
+http://<raspberry-pi-ip>:7575
+```
+
+### 🧩 Step 4: Customize Your Homepage
+
+1. Add widgets for Jellyfin, Pi-hole, etc.
+2. Set logos, names, and links.
+3. Save the layout for quick service access.
+
+---
+
+🎉 Homarr gives you a clean homepage to access and manage your server apps.
+
+
 ## 🗄️ Backups & Data Safety
 
 *Coming soon...*
