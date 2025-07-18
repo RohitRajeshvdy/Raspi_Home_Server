@@ -1,0 +1,136 @@
+# Compose file for the *arr stack. Configuration files are stored in the
+# directory you launch the compose file on. Change to bind mounts if needed.
+# All containers are ran with user and group ids of the main user and
+# group to aviod permissions issues of downloaded files, please refer
+# the read me file for more information.
+
+#############################################################################
+# NOTICE: We recently switched to using a .env file. PLEASE refer to the docs.
+# https://github.com/TechHutTV/homelab/tree/main/media#docker-compose-and-env
+#############################################################################
+
+networks:
+  servarrnetwork:
+    name: servarrnetwork
+    ipam:
+      config:
+        - subnet: 172.39.0.0/24
+
+services:
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: qbittorrent
+    restart: unless-stopped
+    labels:
+      - deunhealth.restart.on.unhealthy=true
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - WEBUI_PORT=8080
+      - TORRENTING_PORT=6881
+    ports:
+      - 8080:8080 # qbittorrent web interface
+      - 6881:6881 # qbittorrent torrent port
+    volumes:
+      - ./qbittorrent:/config
+      - /mnt/hdd/data:/data
+    networks:
+      servarrnetwork:
+        ipv4_address: 172.39.0.10
+    healthcheck:
+      test: ping -c 1 www.google.com || exit 1
+      interval: 60s
+      retries: 3
+      start_period: 20s
+      timeout: 10s
+
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: prowlarr
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    ports:
+      - 9696:9696 # prowlarr
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ./prowlarr:/config
+    restart: unless-stopped
+    networks:
+      servarrnetwork:
+        ipv4_address: 172.39.0.12
+
+
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: sonarr
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ./sonarr:/config
+      - /mnt/hdd/data:/data
+    ports:
+      - 8989:8989
+    networks:
+      servarrnetwork:
+        ipv4_address: 172.39.0.3
+
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ./radarr:/config
+      - /mnt/hdd/data:/data
+    ports:
+      - 7878:7878
+    networks:
+      servarrnetwork:
+        ipv4_address: 172.39.0.4
+
+  lidarr:
+    container_name: lidarr
+    image: lscr.io/linuxserver/lidarr:latest
+    restart: unless-stopped
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ./lidarr:/config
+      - /mnt/hdd/data:/data
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    ports:
+      - 8686:8686
+    networks:
+      servarrnetwork:
+        ipv4_address: 172.39.0.5
+
+  bazarr:
+    image: lscr.io/linuxserver/bazarr:latest
+    container_name: bazarr
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ./bazarr:/config
+      - /mnt/hdd/data:/data
+    ports:
+      - 6767:6767
+    networks:
+      servarrnetwork:
+        ipv4_address: 172.39.0.6
