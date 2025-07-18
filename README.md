@@ -646,23 +646,106 @@ Set up your admin accounts and start configuring media libraries and request han
 
 🎉 Done! Jellyfin will serve your media and Jellyseerr will help users request new content to be automatically downloaded.
 
-## 📥 qBittorrent
+## 🌪️ \*arr Stack + qBittorrent Setup
 
-*Coming soon...*
-
-## 🔍 Prowlarr
-
-*Coming soon...*
-
-## 🎞️ Radarr
-
-*Coming soon...*
-
-## 📺 Sonarr
-
-*Coming soon...*
+This section covers installing and configuring the full \*arr stack: qBittorrent, Sonarr, Radarr, Lidarr, Prowlarr, and Bazarr.
 
 ---
+
+### 📂 Step 1: Navigate to the arr directory
+
+```bash
+cd ~/docker/arr
+```
+
+---
+
+### ✏️ Step 2: Edit the `docker-compose.yml` File
+
+```bash
+nano docker-compose.yml
+```
+
+Ensure all services use the correct data mount:
+
+```yaml
+    volumes:
+      - /mnt/hdd/data:/data
+```
+
+> This is required for media file access and consistent storage.
+
+---
+
+### ⚙️ Step 3: Edit the `.env` File
+
+```bash
+nano .env
+```
+
+Set your timezone and user IDs:
+
+```env
+TZ=Asia/Kolkata
+PUID=1000
+PGID=1000
+```
+
+---
+
+### ▶️ Step 4: Start All Services
+
+```bash
+docker compose up -d
+```
+
+---
+
+### 🧲 Step 5: qBittorrent Setup
+
+After the services start, check qBittorrent logs to find the default login credentials:
+
+```bash
+docker logs qbittorrent
+```
+
+Access the web interface:
+
+```
+http://<raspberry-pi-ip>:8080
+```
+
+> Use the credentials from the logs, then immediately change them in:
+
+```
+Settings → Web UI → Username / Password
+```
+
+---
+
+### 📺 Step 6: Configure the Other Services
+
+* **Sonarr:** http\://<raspberry-pi-ip>:8989
+* **Radarr:** http\://<raspberry-pi-ip>:7878
+* **Lidarr:** http\://<raspberry-pi-ip>:8686
+* **Bazarr:** http\://<raspberry-pi-ip>:6767
+* **Prowlarr:** http\://<raspberry-pi-ip>:9696
+
+All services are now running and accessible via your Pi’s IP address.
+
+---
+
+### 🎥 Final Step: Follow Setup Video
+
+For full configuration of the \*arr automation system (Sonarr/Radarr + Prowlarr + qBittorrent), watch this video:
+
+▶️ [Automated Torrent Media Server Setup - YouTube](https://youtu.be/twJDyoj0tDc?si=L5tVUr_hbUi_hDaJ)
+
+It covers indexers, download clients, and organizing your media end-to-end.
+
+---
+
+🎉 Done! Your automated media server is live and ready to use.
 
 ## 🏠 Homarr
 
