@@ -891,6 +891,40 @@ Use this token in Uptime Kuma or Watchtower to send notifications to Gotify.
 
 ---
 
+### 🛡️ - Watchtower
+
+Watchtower automatically updates running Docker containers whenever their base images are refreshed.
+
+#### 📦 Installation
+
+```bash
+cd watchtower
+```
+
+#### ⚙️ Configuration Steps
+
+1. Open your existing `docker-compose.yml` file inside the `watchtower` directory.
+2. Edit the following environment variables under the `watchtower` service:
+
+   * **`WATCHTOWER_NOTIFICATION_GOTIFY_URL`**: Set it to your Gotify endpoint (e.g., `https://gotify.example.duckdns.org/`).
+   * **`WATCHTOWER_NOTIFICATION_GOTIFY_TOKEN`**: Paste the token generated from your Gotify application.
+   * **`WATCHTOWER_DISABLE_CONTAINERS`**: List containers you do **not** want Watchtower to auto-update (e.g., `gotify,file-browser,portainer,...`).
+   * You can also customize the schedule with `WATCHTOWER_SCHEDULE` (e.g., `"0 1 * * *"` for 1 AM daily).
+
+#### ▶️ Running Watchtower
+
+```bash
+docker compose up -d
+```
+
+Watchtower will now:
+
+* Monitor running containers.
+* Auto-update them based on your schedule.
+* Skip the containers you've listed.
+* Send update notifications to Gotify.
+
+---
 
 
 ## 🗄️ Backups & Data Safety
