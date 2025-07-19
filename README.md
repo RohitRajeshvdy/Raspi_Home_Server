@@ -29,6 +29,8 @@ A self-hosted, Docker-based home server running on Raspberry Pi 4. Includes medi
      * [Sonarr](#-sonarr)
    * [Homarr](#-homarr)
    * [File Browser](#-file-browser)
+   * [Gotify](#-gotify)
+   * [Watch Tower](#-watch-tower)
 8. [Backups & Data Safety](#-backups--data-safety)
 
 ---
@@ -855,7 +857,7 @@ Settings → User Management
 
 🎉 Done! You now have a simple web-based file manager accessible from your browser.
 
-### 📣 - Gotify
+## 📣 - Gotify
 
 Gotify is a simple self-hosted push notification server for sending real-time notifications.
 
@@ -891,7 +893,7 @@ Use this token in Uptime Kuma or Watchtower to send notifications to Gotify.
 
 ---
 
-### 🛡️ - Watchtower
+## 🛡️ - Watchtower
 
 Watchtower automatically updates running Docker containers whenever their base images are refreshed.
 
