@@ -31,6 +31,7 @@ A self-hosted, Docker-based home server running on Raspberry Pi 4. Includes medi
    * [File Browser](#-file-browser)
    * [Gotify](#-gotify)
    * [Watch Tower](#-watch-tower)
+     
 8. [Backups & Data Safety](#-backups--data-safety)
 
 ---
