@@ -29,6 +29,9 @@ A self-hosted, Docker-based home server running on Raspberry Pi 4. Includes medi
      * [Sonarr](#-sonarr)
    * [Homarr](#-homarr)
    * [File Browser](#-file-browser)
+   * [Gotify](#-gotify)
+   * [Watch Tower](#-watch-tower)
+     
 8. [Backups & Data Safety](#-backups--data-safety)
 
 ---
@@ -854,6 +857,77 @@ Settings → User Management
 ---
 
 🎉 Done! You now have a simple web-based file manager accessible from your browser.
+
+## 📣 - Gotify
+
+Gotify is a simple self-hosted push notification server for sending real-time notifications.
+
+#### 📦 Installation
+
+```bash
+cd gotify
+docker compose up -d
+```
+
+#### 🔐 Default Credentials
+
+* **Username**: `admin`
+* **Password**: `changeme`
+
+After first login, it's recommended to change the password for security.
+
+You can now access Gotify via your browser at:
+
+```
+http://<your-raspberry-pi-ip>:8484
+```
+
+#### ⚙️ Creating an Application (for Uptime Kuma & Watchtower)
+
+1. Log in to the Gotify web interface.
+2. Go to the **Applications** tab.
+3. Click **Create Application**.
+4. Give your app a name like `uptimekuma` or `watchtower`.
+5. Note down the **generated token** – this is needed for integrations.
+
+Use this token in Uptime Kuma or Watchtower to send notifications to Gotify.
+
+---
+
+## 🛡️ - Watchtower
+
+Watchtower automatically updates running Docker containers whenever their base images are refreshed.
+
+#### 📦 Installation
+
+```bash
+cd watchtower
+```
+
+#### ⚙️ Configuration Steps
+
+1. Open your existing `docker-compose.yml` file inside the `watchtower` directory.
+2. Edit the following environment variables under the `watchtower` service:
+
+   * **`WATCHTOWER_NOTIFICATION_GOTIFY_URL`**: Set it to your Gotify endpoint (e.g., `https://gotify.example.duckdns.org/`).
+   * **`WATCHTOWER_NOTIFICATION_GOTIFY_TOKEN`**: Paste the token generated from your Gotify application.
+   * **`WATCHTOWER_DISABLE_CONTAINERS`**: List containers you do **not** want Watchtower to auto-update (e.g., `gotify,file-browser,portainer,...`).
+   * You can also customize the schedule with `WATCHTOWER_SCHEDULE` (e.g., `"0 1 * * *"` for 1 AM daily).
+
+#### ▶️ Running Watchtower
+
+```bash
+docker compose up -d
+```
+
+Watchtower will now:
+
+* Monitor running containers.
+* Auto-update them based on your schedule.
+* Skip the containers you've listed.
+* Send update notifications to Gotify.
+
+---
 
 
 ## 🗄️ Backups & Data Safety
