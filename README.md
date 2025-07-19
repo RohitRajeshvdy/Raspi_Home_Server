@@ -832,12 +832,6 @@ After it starts, check the container logs for default login credentials:
 docker logs filebrowser
 ```
 
-Once logged in, change the username and password via:
-
-```
-Settings → User Management
-```
-
 ---
 
 ### 🌐 Step 5: Access the Web Interface
@@ -848,7 +842,14 @@ Open your browser and visit:
 http://<your-raspberry-pi-ip>:8443
 ```
 
-Log in using the credentials from the logs, and make sure to change them immediately for security.
+Log in using the credentials from the logs.
+
+
+Once logged in, change the username and password via:
+
+```
+Settings → User Management
+```
 
 ---
 
