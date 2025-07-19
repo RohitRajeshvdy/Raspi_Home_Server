@@ -28,6 +28,7 @@ A self-hosted, Docker-based home server running on Raspberry Pi 4. Includes medi
      * [Radarr](#-radarr)
      * [Sonarr](#-sonarr)
    * [Homarr](#-homarr)
+   * [File Browser](#-file-browser)
 8. [Backups & Data Safety](#-backups--data-safety)
 
 ---
@@ -783,6 +784,75 @@ http://<raspberry-pi-ip>:7575
 ---
 
 🎉 Homarr gives you a clean homepage to access and manage your server apps.
+
+## 🗂️ File Browser
+
+### 📂 Step 1: Navigate to the Filebrowser Directory
+
+Create a new directory for Filebrowser:
+
+```bash
+mkdir -p ~/docker/filebrowser
+cd ~/docker/filebrowser
+```
+
+---
+
+### ✏️ Step 2: Edit the `docker-compose.yml` File
+
+The `docker-compose.yml` file already exists. Open it and edit the Filebrowser service block to:
+
+* Set the correct `user` ID (e.g., `1000:1000`) based on your system.
+* Update the `volumes` paths to point to `/mnt/hdd/filebrowser/data` and `/mnt/hdd/filebrowser/config`.
+
+---
+
+### 📁 Step 3: Create and Set Permissions on Mount Folders
+
+Create required folders and assign proper permissions:
+
+```bash
+sudo mkdir -p /mnt/hdd/filebrowser/{data,config}
+sudo chown -R 1000:1000 /mnt/hdd/filebrowser
+```
+
+> Ensures Filebrowser has access to read/write data and config files.
+
+---
+
+### ▶️ Step 4: Start Filebrowser
+
+```bash
+docker compose up -d
+```
+
+After it starts, check the container logs for default login credentials:
+
+```bash
+docker logs filebrowser
+```
+
+Once logged in, change the username and password via:
+
+```
+Settings → User Management
+```
+
+---
+
+### 🌐 Step 5: Access the Web Interface
+
+Open your browser and visit:
+
+```
+http://<your-raspberry-pi-ip>:8443
+```
+
+Log in using the credentials from the logs, and make sure to change them immediately for security.
+
+---
+
+🎉 Done! You now have a simple web-based file manager accessible from your browser.
 
 
 ## 🗄️ Backups & Data Safety
