@@ -855,6 +855,43 @@ Settings → User Management
 
 🎉 Done! You now have a simple web-based file manager accessible from your browser.
 
+### 📣 - Gotify
+
+Gotify is a simple self-hosted push notification server for sending real-time notifications.
+
+#### 📦 Installation
+
+```bash
+cd gotify
+docker compose up -d
+```
+
+#### 🔐 Default Credentials
+
+* **Username**: `admin`
+* **Password**: `changeme`
+
+After first login, it's recommended to change the password for security.
+
+You can now access Gotify via your browser at:
+
+```
+http://<your-raspberry-pi-ip>:8484
+```
+
+#### ⚙️ Creating an Application (for Uptime Kuma & Watchtower)
+
+1. Log in to the Gotify web interface.
+2. Go to the **Applications** tab.
+3. Click **Create Application**.
+4. Give your app a name like `uptimekuma` or `watchtower`.
+5. Note down the **generated token** – this is needed for integrations.
+
+Use this token in Uptime Kuma or Watchtower to send notifications to Gotify.
+
+---
+
+
 
 ## 🗄️ Backups & Data Safety
 
