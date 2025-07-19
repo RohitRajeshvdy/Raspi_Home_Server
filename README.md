@@ -803,7 +803,7 @@ cd ~/docker/filebrowser
 The `docker-compose.yml` file already exists. Open it and edit the Filebrowser service block to:
 
 * Set the correct `user` ID (e.g., `1000:1000`) based on your system.
-* Update the `volumes` paths to point to `/mnt/hdd/filebrowser/data` and `/mnt/hdd/filebrowser/config`.
+* Update the `volumes` paths to point to `/mnt/hdd/filebrowser/srv` , `/mnt/hdd/filebrowser/config` and `/mnt/hdd/filebrowser/database`.
 
 ---
 
@@ -812,7 +812,7 @@ The `docker-compose.yml` file already exists. Open it and edit the Filebrowser s
 Create required folders and assign proper permissions:
 
 ```bash
-sudo mkdir -p /mnt/hdd/filebrowser/{data,config}
+sudo mkdir -p /mnt/hdd/filebrowser/{srv,config,database}
 sudo chown -R 1000:1000 /mnt/hdd/filebrowser
 ```
 
