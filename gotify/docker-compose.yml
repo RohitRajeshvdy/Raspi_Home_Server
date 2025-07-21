@@ -4,9 +4,9 @@ services:
     container_name: gotify
     restart: unless-stopped
     ports:
-      - "8484:80" # You can change or remove this if reverse proxying via NPM
+      - "8484:80"
     environment:
       - TZ=Asia/Kolkata
-      - GOTIFY_DEFAULTUSER_PASS=changeme # Change this
+      - GOTIFY_DEFAULTUSER_PASS=changeme 
     volumes:
       - './gotify_data:/app/data'
