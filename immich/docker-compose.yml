@@ -26,38 +26,36 @@ services:
     environment:
       - TZ=${TZ}
     healthcheck:
-      test: redis-cli ping || exit 1
+      disable: false
     restart: always
 
   database:
     container_name: immich_postgres
     image: ghcr.io/immich-app/postgres:14-vectorchord0.4.3-pgvectors0.2.0
     environment:
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_USER: ${DB_USERNAME}
-      POSTGRES_DB: ${DB_DATABASE_NAME}
-      POSTGRES_INITDB_ARGS: '--data-checksums'
-      TZ: ${TZ}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_USER=${DB_USERNAME}
+      - POSTGRES_DB=${DB_DATABASE_NAME}
+      - POSTGRES_INITDB_ARGS=--data-checksums
+      - TZ=${TZ}
     volumes:
       - ${DB_DATA_LOCATION}:/var/lib/postgresql/data
     restart: always
+    healthcheck:
+      disable: false
 
   # immich-machine-learning:
   #   container_name: immich_machine_learning
-  #   # For hardware acceleration, add one of -[armnn, cuda, rocm, openvino, rknn] to the image tag.
-  #   # Example tag: ${IMMICH_VERSION:-release}-cuda
   #   image: ghcr.io/immich-app/immich-machine-learning:${IMMICH_VERSION:-release}
-  #   # extends: # uncomment this section for hardware acceleration - see https://immich.app/docs/features/ml-hardware-acceleration
-  #   #   file: hwaccel.ml.yml
-  #   #   service: cpu # set to one of [armnn, cuda, rocm, openvino, openvino-wsl, rknn] for accelerated inference - use the `-wsl` version for WSL2 where applicable
   #   volumes:
   #     - model-cache:/cache
   #   env_file:
   #     - .env
+  #   environment:
+  #     - TZ=${TZ}
   #   restart: always
   #   healthcheck:
   #     disable: false
 
 volumes:
   model-cache:
-
