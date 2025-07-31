@@ -5,6 +5,7 @@ services:
     volumes:
       - ./data:/app/data
     ports:
-      # <Host Port>:<Container Port>
-      - 3001:3001
+      - "3001:3001"
+    environment:
+      - TZ=Asia/Kolkata
     restart: unless-stopped
