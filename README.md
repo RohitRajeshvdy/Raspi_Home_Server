@@ -223,7 +223,7 @@ Create a directory for your Docker setup and clone your repository:
 ```bash
 mkdir ~/docker
 cd ~/docker
-git clone https://github.com/RohitRajeshvdy/Raspi-Home-Server.git .
+git clone https://github.com/RohitRajeshvdy/Raspi_Home_Server.git .
 ```
 
 > This will clone all folders and files from your GitHub repo into the `~/docker` directory on your Raspberry Pi.
