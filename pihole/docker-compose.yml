@@ -5,10 +5,10 @@ services:
     image: pihole/pihole:latest
 
     ports:
-      - "53:53/tcp"        # DNS TCP
-      - "53:53/udp"        # DNS UDP
-      - "8081:80/tcp"      # Web interface (HTTP)
-      - "8444:443/tcp"     # Web interface (HTTPS)
+      - "53:53/tcp"      # DNS TCP
+      - "53:53/udp"      # DNS UDP
+      - "8081:80/tcp"    # Web interface (HTTP) - accessible at http://<host-ip>:8081
+      - "8444:443/tcp"   # Web interface (HTTPS)
 
     environment:
       TZ: 'Asia/Kolkata'
@@ -17,18 +17,12 @@ services:
 
     volumes:
       - './etc-pihole:/etc/pihole'
-      # Uncomment if you're migrating from v5 and used custom dnsmasq configs
+      # Uncomment if using custom dnsmasq configuration:
       # - './etc-dnsmasq.d:/etc/dnsmasq.d'
 
     cap_add:
-      # NET_ADMIN is not required unless you're using Pi-hole as a DHCP server
-      - SYS_TIME       # Optional - allows container to sync system time
-      - SYS_NICE       # Optional - improves DNS performance slightly
+      - NET_ADMIN     # Needed only for DHCP functionality
+      - SYS_TIME      # Optional - only needed if setting system time
+      - SYS_NICE      # Optional - slightly improves CPU priority
 
     restart: unless-stopped
-
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost/admin/index.php"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
