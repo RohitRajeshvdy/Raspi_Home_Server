@@ -1,12 +1,13 @@
 services:
   gotify:
-    image: gotify/server
+    image: gotify/server:latest
     container_name: gotify
     restart: unless-stopped
     ports:
       - "8484:80"
     environment:
       - TZ=Asia/Kolkata
-      - GOTIFY_DEFAULTUSER_PASS=changeme 
+      - GOTIFY_DEFAULTUSER_PASS=changeme
     volumes:
-      - './gotify_data:/app/data'
+      - ./gotify_data:/app/data
+
