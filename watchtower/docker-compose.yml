@@ -7,6 +7,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - WATCHTOWER_SCHEDULE="0 1 * * *" #every day at 1 am
+      - WATCHTOWER_ROLLING_RESTART=true
       - WATCHTOWER_NOTIFICATIONS=gotify
       - WATCHTOWER_NOTIFICATION_GOTIFY_URL=https://gotify.rohitrajesh.duckdns.org/
       - WATCHTOWER_NOTIFICATION_GOTIFY_TOKEN=AAPNNzk15S0vyC1
