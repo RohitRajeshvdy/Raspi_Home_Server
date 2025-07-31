@@ -10,11 +10,6 @@ services:
       - portainer_data:/data
     environment:
       - TZ=Asia/Kolkata
-    healthcheck:
-      test: ["CMD", "curl", "-fsSL", "https://localhost:9443"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
 
 volumes:
   portainer_data:
