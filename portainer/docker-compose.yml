@@ -1,12 +1,20 @@
 services:
   portainer:
-    image: portainer/portainer-ce:latest
+    image: portainer/portainer-ce:lts
     container_name: portainer
+    restart: always
     ports:
-      - 9000:9000
+      - 9443:9443
     volumes:
-      - portainer_data:/data
       - /var/run/docker.sock:/var/run/docker.sock
-    restart: unless-stopped
+      - portainer_data:/data
+    environment:
+      - TZ=Asia/Kolkata
+    healthcheck:
+      test: ["CMD", "curl", "-fsSL", "https://localhost:9443"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
 volumes:
   portainer_data:
