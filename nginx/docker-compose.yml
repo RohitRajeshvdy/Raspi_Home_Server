@@ -18,3 +18,25 @@ services:
       INITIAL_ADMIN_PASSWORD: changeme
 
 
+services:
+  nginx_proxy_manager:
+    container_name: nginx_proxy_manager
+    image: jc21/nginx-proxy-manager:latest   
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - ./data/npm_data:/data
+      - ./data/npm_letsencrypt:/etc/letsencrypt
+      - ./data/npm_logs:/var/log/nginx
+    environment:
+      TZ: Asia/Kolkata
+      DB_SQLITE_FILE: "/data/database.sqlite"
+      INITIAL_ADMIN_EMAIL: admin@example.com
+      INITIAL_ADMIN_PASSWORD: changeme
+    healthcheck:
+  test: ["CMD", "wget", "--spider", "-q", "http://localhost:81"]
+  interval: 30s
+  timeout: 10s
+  retries: 5
+
+
