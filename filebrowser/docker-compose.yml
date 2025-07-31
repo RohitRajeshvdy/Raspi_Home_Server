@@ -6,9 +6,10 @@ services:
     ports:
       - 8443:80
     volumes:
-      - /mnt/hdd/filebrowser/srv:/srv
-      - /mnt/hdd/filebrowser/database:/database
-      - /mnt/hdd/filebrowser/config:/config
+      - ../../:/srv                            # Full HDD access
+      - ./data/database:/database              # Database stored inside filebrowser/data
+      - ./data/config:/config                  # Config stored inside filebrowser/data
     environment:
+      - TZ=Asia/Kolkata
       - FB_BASEURL=/filebrowser
     restart: always
