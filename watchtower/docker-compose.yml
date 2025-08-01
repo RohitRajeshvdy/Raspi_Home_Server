@@ -6,12 +6,12 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
-      - WATCHTOWER_SCHEDULE="0 1 * * *" #every day at 1 am
+      - WATCHTOWER_SCHEDULE=0 1 * * *  #every day at 1 am
       - WATCHTOWER_ROLLING_RESTART=true
       - WATCHTOWER_NOTIFICATIONS=gotify
-      - WATCHTOWER_NOTIFICATION_GOTIFY_URL=https://gotify.rohitrajesh.duckdns.org/
-      - WATCHTOWER_NOTIFICATION_GOTIFY_TOKEN=AAPNNzk15S0vyC1
-      - WATCHTOWER_DISABLE_CONTAINERS=gotify,file-browser,immich_server,immich_postgres,immich_redis,homarr,uptimekuma-uptime-kuma-1,nginx_proxy_manager,pihole,glances,portainer,watchtower
+      - WATCHTOWER_NOTIFICATION_GOTIFY_URL=http://192.168.31.100:8484/
+      - WATCHTOWER_NOTIFICATION_GOTIFY_TOKEN=A-sTDXzU.W_tkDi
+      - WATCHTOWER_DISABLE_CONTAINERS=immich_server,immich_postgres,immich_redis,immich_machine_learning,uptime-kuma,nginx-proxy-manager,pihole,portainer,watchtower
       - WATCHTOWER_CLEANUP=true
       - WATCHTOWER_TIMEOUT=30s
       - TZ=Asia/Kolkata
