@@ -12,43 +12,20 @@ A lightweight, secure, self-hosted home server architecture built on the **Raspb
 
 ## 📑 Table of Contents
 
-1. [Architecture Overview](#architecture-overview)
-2. [Service & Subdomain Directory](#service--subdomain-directory)
-3. [Hardware & Prerequisites](#hardware--prerequisites)
-4. [Initial System Setup](#initial-system-setup)
-5. [Remote Access & Tailscale SSH](#remote-access--tailscale-ssh)
-6. [External Storage Setup & Auto-Mount](#external-storage-setup--auto-mount)
-7. [Docker & Docker Compose Installation](#docker--docker-compose-installation)
-8. [Core Infrastructure: Caddy Reverse Proxy](#core-infrastructure-caddy-reverse-proxy)
-9. [Services Deployment](#services-deployment)
+1. [Service & Subdomain Directory](#service--subdomain-directory)
+2. [Hardware & Prerequisites](#hardware--prerequisites)
+3. [Initial System Setup](#initial-system-setup)
+4. [Remote Access & Tailscale SSH](#remote-access--tailscale-ssh)
+5. [External Storage Setup & Auto-Mount](#external-storage-setup--auto-mount)
+6. [Docker & Docker Compose Installation](#docker--docker-compose-installation)
+7. [Core Infrastructure: Caddy Reverse Proxy](#core-infrastructure-caddy-reverse-proxy)
+8. [Services Deployment](#services-deployment)
    - [Portainer](#portainer)
    - [Pi-hole](#pi-hole)
    - [Vaultwarden](#vaultwarden)
    - [FileBrowser Quantum](#filebrowser-quantum)
-   - [Watchtower](#watchtower)
-10. [Central Caddyfile Reference](#central-caddyfile-reference)
-11. [Backups & Maintenance](#backups--maintenance)
-12. [Troubleshooting & Verification](#troubleshooting--verification)
-
----
-
-## 🏛️ Architecture Overview
-
-```
-[ Tailscale Client ] (Phone / Laptop / Remote Device)
-         │
-         ▼  (Encrypted WireGuard Mesh: 100.x.y.z)
-[ Raspberry Pi 4 : Host Ports 80 / 443 / 53 ]
-         │
-         ├── Port 53 (TCP/UDP) ──► Pi-hole DNS Sinkhole
-         └── Ports 80 / 443 ─────► Caddy Reverse Proxy (Wildcard SSL via DuckDNS)
-                                          │
-                                    (caddy_net)
-                                          ├─► Portainer (:9443)
-                                          ├─► Pi-hole Admin (:80)
-                                          ├─► Vaultwarden (:80)
-                                          └─► FileBrowser (:80)
-```
+9. [Central Caddyfile Reference](#central-caddyfile-reference)
+10. [Troubleshooting & Verification](#troubleshooting--verification)
 
 ---
 
@@ -81,7 +58,7 @@ A lightweight, secure, self-hosted home server architecture built on the **Raspb
 
 1. Flash your microSD card with **Raspberry Pi OS Lite (64-bit)** or **Debian 13 (Trixie) 64-bit** using [Raspberry Pi Imager](https://www.raspberrypi.com/software/).
 2. In the OS Customization settings:
-   * Set the hostname (e.g., `raspberrypi`).
+   * Set your hostname (e.g., `raspberrypi`).
    * Set your primary non-root username and password (e.g., `pi`).
    * Enable SSH with password authentication or your public SSH key.
 3. Insert the card into the Pi, connect the Ethernet cable, and power it on.
@@ -89,6 +66,7 @@ A lightweight, secure, self-hosted home server architecture built on the **Raspb
    ```bash
    ssh pi@raspberrypi.local
    ```
+   > ⚠️ **Placeholder Reminder:** Replace `pi` and `raspberrypi.local` with the username and hostname you configured in the imager.
 5. Update repository packages and upgrade the base system:
    ```bash
    sudo apt update && sudo apt upgrade -y
@@ -130,6 +108,7 @@ From any device logged into your Tailscale account:
 ```bash
 ssh pi@<tailscale-ip-or-magicdns-hostname>
 ```
+> ⚠️ **Placeholder Reminder:** Replace `<tailscale-ip-or-magicdns-hostname>` with your Pi's `100.x.y.z` Tailscale IP or MagicDNS hostname (e.g., `ssh pi@100.101.102.103`).
 
 ---
 
@@ -154,7 +133,7 @@ To protect the microSD card from write wear, persistent data and file shares liv
    ```bash
    sudo blkid /dev/sda1
    ```
-   *Copy the UUID string (e.g., `UUID="12345678-1234-1234-1234-123456789abc"`).*
+   *Copy the alphanumeric UUID string (e.g., `UUID="12345678-1234-1234-1234-123456789abc"`).*
 6. Configure auto-mount at boot:
    ```bash
    sudo nano /etc/fstab
@@ -163,6 +142,7 @@ To protect the microSD card from write wear, persistent data and file shares liv
    ```fstab
    UUID=YOUR_UUID_HERE /mnt/hdd ext4 defaults,noatime,nofail 0 2
    ```
+   > ⚠️ **Placeholder Reminder:** Replace `YOUR_UUID_HERE` with your actual partition UUID from step 5.
 7. Test the mount and set ownership permissions to your user (`1000:1000`):
    ```bash
    sudo mount -a
@@ -203,8 +183,8 @@ Caddy automatically provisions wildcard Let's Encrypt certificates using the Duc
    tailscale ip -4
    ```
 2. Log into [DuckDNS](https://www.duckdns.org/).
-3. Update your subdomain (e.g., `yourname`) to point to your `100.x.y.z` Tailscale IP.
-4. Copy your DuckDNS API token.
+3. Update your subdomain to point to your `100.x.y.z` Tailscale IP.
+4. Copy your DuckDNS API token from the top of the account page.
 
 ### Step 2: Create the Shared Network
 
@@ -259,7 +239,9 @@ docker network create caddy_net
      caddy_net:
        external: true
    ```
-4. Create your base `Caddyfile` (replace placeholders):
+   > ⚠️ **Placeholder Reminder:** Replace `YOUR_DUCKDNS_TOKEN_HERE` with your actual secret token copied from DuckDNS.
+
+4. Create your base `Caddyfile`:
    ```caddyfile
    {
        email your_email@example.com
@@ -275,6 +257,10 @@ docker network create caddy_net
        }
    }
    ```
+   > ⚠️ **Placeholder Reminder:**
+   > * Replace `your_email@example.com` with your real email address (for Let's Encrypt renewal alerts).
+   > * Replace `yourname` with your registered DuckDNS subdomain prefix (e.g., `*.myserver.duckdns.org`).
+
 5. Build and run Caddy:
    ```bash
    docker compose up -d --build
@@ -328,6 +314,8 @@ docker compose up -d
         }
     }
 ```
+> ⚠️ **Placeholder Reminder:** Replace `yourname` with your actual DuckDNS subdomain prefix.
+
 Reload Caddy:
 ```bash
 docker exec -w /etc/caddy caddy caddy reload
@@ -392,6 +380,8 @@ docker exec -it pihole pihole setpassword
         reverse_proxy pihole:80
     }
 ```
+> ⚠️ **Placeholder Reminder:** Replace `yourname` with your actual DuckDNS subdomain prefix.
+
 Reload Caddy:
 ```bash
 docker exec -w /etc/caddy caddy caddy reload
@@ -429,6 +419,7 @@ networks:
   caddy_net:
     external: true
 ```
+> ⚠️ **Placeholder Reminder:** In `DOMAIN=https://vault.yourname.duckdns.org`, replace `yourname` with your actual DuckDNS subdomain prefix.
 
 Start Vaultwarden:
 ```bash
@@ -442,6 +433,8 @@ docker compose up -d
         reverse_proxy vaultwarden:80
     }
 ```
+> ⚠️ **Placeholder Reminder:** Replace `yourname` with your actual DuckDNS subdomain prefix.
+
 Reload Caddy:
 ```bash
 docker exec -w /etc/caddy caddy caddy reload
@@ -508,6 +501,8 @@ docker compose up -d
         reverse_proxy filebrowser:80
     }
 ```
+> ⚠️ **Placeholder Reminder:** Replace `yourname` with your actual DuckDNS subdomain prefix.
+
 Reload Caddy:
 ```bash
 docker exec -w /etc/caddy caddy caddy reload
@@ -516,39 +511,13 @@ docker exec -w /etc/caddy caddy caddy reload
 
 ---
 
-### 🔄 Watchtower
-
-Automatically keeps running containers updated without manual intervention.
-
-```bash
-mkdir -p ~/docker/watchtower && cd ~/docker/watchtower
-```
-
-**`docker-compose.yml`**:
-```yaml
-services:
-  watchtower:
-    image: containrrr/watchtower
-    container_name: watchtower
-    restart: unless-stopped
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    environment:
-      - WATCHTOWER_CLEANUP=true
-      - WATCHTOWER_SCHEDULE=0 0 4 * * * # Runs daily at 4:00 AM
-      - WATCHTOWER_DISABLE_CONTAINERS=caddy portainer pihole
-```
-
-Start Watchtower:
-```bash
-docker compose up -d
-```
-
----
-
 ## 📜 Central Caddyfile Reference
 
 Save this consolidated configuration to `~/docker/caddy/Caddyfile`:
+
+> ⚠️ **Important Placeholders to Replace:**
+> 1. Replace `your_email@example.com` with your actual email address.
+> 2. Replace every occurrence of `yourname` with your registered DuckDNS subdomain prefix.
 
 ```caddyfile
 {
@@ -593,33 +562,6 @@ Save this consolidated configuration to `~/docker/caddy/Caddyfile`:
         abort
     }
 }
-```
-
----
-
-## 🗄️ Backups & Maintenance
-
-### 1. Docker Configuration Backup
-Run this command periodically or schedule via `cron` to back up all YAML configs and states:
-
-```bash
-tar --exclude='cache' \
-    --exclude='tmp' \
-    -czvf ~/docker_backup_$(date +%F).tar.gz ~/docker
-```
-
-### 2. Live Vaultwarden SQLite Backup
-To back up the database safely without stopping Vaultwarden:
-
-```bash
-sqlite3 ~/docker/vaultwarden/data/db.sqlite3 ".backup '~/docker/vaultwarden/data/db_backup_$(date +%F).sqlite3'"
-```
-
-### 3. Offsite Transfer via Tailscale
-Transfer backup archives to another machine on your Tailscale network:
-
-```bash
-tailscale file cp ~/docker_backup_*.tar.gz <target-tailscale-hostname>:
 ```
 
 ---
