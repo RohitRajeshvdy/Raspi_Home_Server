@@ -1,935 +1,808 @@
-# 🍓 Raspberry Pi 4 Home Server Setup
+# 🍓 Raspberry Pi 4 Home Server
 
-A self-hosted, Docker-based home server running on Raspberry Pi 4. Includes media streaming, ad-blocking, automated downloads, photo management, and system monitoring.
+[![Platform](https://img.shields.io/badge/Hardware-Raspberry%20Pi%204B-C51A4A?logo=raspberry-pi&logoColor=white)](#hardware--prerequisites)
+[![OS](https://img.shields.io/badge/OS-Debian%2013%20%2F%20RPi%20OS%2064--bit-A80030?logo=debian&logoColor=white)](#initial-system-setup)
+[![Docker](https://img.shields.io/badge/Engine-Docker%20Compose-2496ED?logo=docker&logoColor=white)](#docker--docker-compose-installation)
+[![Tailscale](https://img.shields.io/badge/Mesh%20VPN-Tailscale-24292E?logo=tailscale&logoColor=white)](#remote-access--tailscale-ssh)
+[![Caddy](https://img.shields.io/badge/Reverse%20Proxy-Caddy%20v2-1F88C0?logo=caddy&logoColor=white)](#core-infrastructure-caddy-reverse-proxy)
 
----
-
-## 📏 Table of Contents
-
-1. [Hardware Used](#-hardware-used)
-2. [Initial Raspberry Pi Setup](#-initial-raspberry-pi-setup)
-3. [Static IP Setup](#-static-ip-setup)
-4. [External Drive Formatting & Mounting](#-external-drive-formatting--mounting)
-5. [Docker & Docker Compose Installation](#-docker--docker-compose-installation)
-6. [Remote Access](#-remote-access)
-7. [Services (Docker Compose)](#-services-docker-compose)
-
-   * [Portainer](#-portainer)
-   * [Nginx](#-nginx)
-   * [Pi-hole](#-pi-hole)
-   * [Glances](#-glances)
-   * [Uptime Kuma](#-uptime-kuma)
-   * [Immich](#-immich)
-   * [Jellyfin + Jellyseerr](#-jellyfin--jellyseerr)
-   * [\*arr Stack + qBittorrent](#-arr-stack--qbittorrent-setup)
-
-     * [qBittorrent](#-qbittorrent)
-     * [Prowlarr](#-prowlarr)
-     * [Radarr](#-radarr)
-     * [Sonarr](#-sonarr)
-   * [Homarr](#-homarr)
-   * [File Browser](#-file-browser)
-   * [Gotify](#-gotify)
-   * [Watch Tower](#-watch-tower)
-     
-8. [Backups & Data Safety](#-backups--data-safety)
+A lightweight, secure, self-hosted home server architecture built on the **Raspberry Pi 4 Model B**. All core services run in isolated Docker containers behind a custom **Caddy** reverse proxy, providing automated wildcard SSL through **DuckDNS** (DNS-01 challenge). Access is restricted strictly to a private **Tailscale** WireGuard mesh network—leaving zero inbound ports exposed to the public internet.
 
 ---
 
+## 📑 Table of Contents
 
-## 🛠️ Hardware Used
-
-* Raspberry Pi 4 (4GB or 8GB)
-* SD Card for OS
-* External SSD/HDD (formatted to ext4)
-* Ethernet connection to router (recommended)
+1. [Service & Subdomain Directory](#service--subdomain-directory)
+2. [Hardware & Prerequisites](#hardware--prerequisites)
+3. [Initial System Setup](#initial-system-setup)
+4. [Remote Access & Tailscale SSH](#remote-access--tailscale-ssh)
+5. [External Storage Setup & Auto-Mount](#external-storage-setup--auto-mount)
+6. [Docker & Docker Compose Installation](#docker--docker-compose-installation)
+7. [Core Infrastructure: Caddy Reverse Proxy](#core-infrastructure-caddy-reverse-proxy)
+8. [Services Deployment](#services-deployment)
+   - [Portainer](#portainer)
+   - [Pi-hole](#pi-hole)
+   - [Vaultwarden](#vaultwarden)
+   - [FileBrowser Quantum](#filebrowser-quantum)
+   - [Glance Dashboard](#glance-dashboard)
+9. [Central Caddyfile Reference](#central-caddyfile-reference)
+10. [Troubleshooting & Verification](#troubleshooting--verification)
 
 ---
 
-## 🛠️ Initial Raspberry Pi Setup
+## 🌐 Service & Subdomain Directory
 
-1. Flash **Raspberry Pi OS Lite** (64-bit) using [Raspberry Pi Imager](https://www.raspberrypi.com/software/).
-2. Enable SSH:
+| Service | Subdomain Route | Internal Port | Primary Purpose |
+| :--- | :--- | :--- | :--- |
+| **Portainer** | `portainer.<domain>.duckdns.org` | `9443` (HTTPS) | Container & stack management |
+| **Pi-hole** | `pihole.<domain>.duckdns.org` | `80` (Admin) | Network ad-blocking & local DNS |
+| **Vaultwarden** | `vault.<domain>.duckdns.org` | `80` | Bitwarden-compatible password vault |
+| **FileBrowser** | `files.<domain>.duckdns.org` | `80` | Lightweight private file management |
+| **Glance** | `glance.<domain>.duckdns.org` | `8080` | Unified feeds, system stats & service dashboard |
 
-   * Enable it in the settings before flashing
-3. Connect via SSH:
+---
 
+## 🛠️ Hardware & Prerequisites
+
+* **SBC:** Raspberry Pi 4 Model B (4GB or 8GB recommended).
+* **Storage:** 
+  * 32GB+ High-Endurance microSD card (for the OS).
+  * External USB 3.0 SSD/HDD formatted to `ext4` (for persistent data & files).
+* **Power:** Official 5.1V / 3.0A USB-C Raspberry Pi power supply.
+* **Network:** Gigabit Ethernet connection to your router.
+* **Accounts & Tokens:**
+  * Free [Tailscale Account](https://tailscale.com).
+  * Free [DuckDNS Account](https://www.duckdns.org) with a registered subdomain and API token.
+  * GitHub Personal Access Token (classic, `public_repo` or read-only scope for software release tracking).
+
+---
+
+## ⚙️ Initial System Setup
+
+1. Flash your microSD card with **Raspberry Pi OS Lite (64-bit)** or **Debian 13 (Trixie) 64-bit** using [Raspberry Pi Imager](https://www.raspberrypi.com/software/).
+2. In the OS Customization settings:
+   * Set your hostname (e.g., `raspberrypi`).
+   * Set your primary non-root username and password (e.g., `pi`).
+   * Set your timezone (e.g., `Asia/Kolkata`).
+   * Enable SSH with password authentication or your public SSH key.
+3. Insert the card into the Pi, connect the Ethernet cable, and power it on.
+4. SSH into the Pi from your workstation:
    ```bash
-   ssh pi@<raspberry_ip>
+   ssh pi@raspberrypi.local
+   ```
+   > ⚠️ **Placeholder Reminder:** Replace `pi` and `raspberrypi.local` with the username and hostname you configured in the imager.
+5. Update repository packages and upgrade the base system:
+   ```bash
+   sudo apt update && sudo apt upgrade -y
    ```
 
 ---
 
-## 📁 Static IP Setup
+## 🌐 Remote Access & Tailscale SSH
 
-1. Open the DHCP configuration file:
+Tailscale creates an encrypted WireGuard mesh network connecting all of your personal devices. Tailscale SSH eliminates the need for manual router port forwarding or exposing port 22 to the public internet.
 
-   ```bash
-   sudo nano /etc/dhcpcd.conf
-   ```
+### 1. Install Tailscale
 
-2. Scroll to the bottom and add the following lines:
+```bash
+curl -fsSL https://tailscale.com/install.sh | sh
+```
 
-   ```ini
-   interface eth0
-   static ip_address=192.168.31.100/24
-   static routers=192.168.31.1
-   static domain_name_servers=1.1.1.1 8.8.8.8
-   ```
+### 2. Authenticate and Enable Tailscale SSH
 
-   > Replace `192.168.31.100` with your desired static IP and `192.168.31.1` with your router's IP.
+```bash
+sudo tailscale up --ssh
+```
 
-3. Save the file and reboot:
+1. Open the URL shown in your terminal.
+2. Authorize the machine in your browser to attach the Raspberry Pi to your tailnet.
 
-   ```bash
-   sudo reboot
-   ```
+### 3. Verify Status & Note Your IP
+
+```bash
+tailscale ip -4
+tailscale status
+```
+*Take note of the assigned `100.x.y.z` IPv4 address.*
+
+### 4. Connect via Tailscale SSH
+
+From any device logged into your Tailscale account:
+
+```bash
+ssh pi@<tailscale-ip-or-magicdns-hostname>
+```
+> ⚠️ **Placeholder Reminder:** Replace `<tailscale-ip-or-magicdns-hostname>` with your Pi's `100.x.y.z` Tailscale IP or MagicDNS hostname (e.g., `ssh pi@100.101.102.103`).
 
 ---
 
-## 📍 External Drive Formatting & Mounting
+## 📍 External Storage Setup & Auto-Mount
 
-1. Plug in your external SSD or HDD.
+To protect the microSD card from write wear, persistent data and file shares live on an external drive.
 
-2. List available disks to identify your drive (usually `/dev/sda1`):
-
+1. Connect your external drive to one of the blue **USB 3.0 ports**.
+2. Identify the partition path (e.g., `/dev/sda1`):
    ```bash
    lsblk
    ```
-
-3. Format the drive to ext4 (WARNING: this erases all data on the drive):
-
+3. Format the target partition to `ext4` (*warning: erases all data on that partition*):
    ```bash
-   sudo mkfs.ext4 /dev/sda1
+   sudo mkfs.ext4 -L Storage /dev/sda1
    ```
-
-4. Create a mount point:
-
+4. Create the system mount point:
    ```bash
    sudo mkdir -p /mnt/hdd
    ```
-
-5. Find the UUID of your drive:
-
+5. Retrieve the drive UUID:
    ```bash
-   sudo blkid
+   sudo blkid /dev/sda1
    ```
-
-6. Edit the `/etc/fstab` file to auto-mount on boot:
-
+   *Copy the alphanumeric UUID string (e.g., `UUID="12345678-1234-1234-1234-123456789abc"`).*
+6. Configure auto-mount at boot:
    ```bash
    sudo nano /etc/fstab
    ```
-
-   Add this line at the end (replace `XXXX-XXXX` with your actual UUID):
-
+   Append this line to `/etc/fstab`:
    ```fstab
-   UUID=XXXX-XXXX  /mnt/hdd  ext4  defaults,noatime  0  2
+   UUID=YOUR_UUID_HERE /mnt/hdd ext4 defaults,noatime,nofail 0 2
    ```
-
-7. Mount the drive immediately:
-
+   > ⚠️ **Placeholder Reminder:** Replace `YOUR_UUID_HERE` with your actual partition UUID from step 5.
+7. Test the mount and set ownership permissions to your user (`1000:1000`):
    ```bash
    sudo mount -a
+   sudo chown -R $USER:$USER /mnt/hdd
    ```
 
 ---
 
 ## 🐳 Docker & Docker Compose Installation
 
-1. Update and upgrade your system:
-
+1. Install Docker Engine and the Compose plugin:
    ```bash
-   sudo apt update && sudo apt upgrade -y
+   curl -fsSL https://get.docker.com | sh
    ```
-
-2. Install Docker using the official convenience script:
-
-   ```bash
-   curl -sSL https://get.docker.com | sh
-   ```
-
-3. Add your user to the Docker group:
-
+2. Add your current user to the `docker` group:
    ```bash
    sudo usermod -aG docker $USER
    ```
-
-   > Log out and back in or reboot to apply group changes.
-
-4. Docker Compose is now included as a plugin in modern Docker versions. You can use it like this:
-
+3. Apply group membership without logging out:
    ```bash
-   docker compose version
+   newgrp docker
    ```
-
-   > No need to install it separately. Use `docker compose` (with a space) instead of `docker-compose`.
-
-5. Confirm installation:
-
+4. Confirm installation:
    ```bash
-   docker --version
-   docker compose version
+   docker --version && docker compose version
    ```
 
 ---
 
-## 🌐 Remote Access
+## 🛡️ Core Infrastructure: Caddy Reverse Proxy
 
-To access your home server from outside your local network securely, use [Tailscale](https://tailscale.com), a zero-config WireGuard-based VPN.
+Caddy automatically provisions wildcard Let's Encrypt certificates using the DuckDNS DNS-01 challenge. Services communicate over an internal bridge network (`caddy_net`).
 
-### Install Tailscale:
+### Step 1: Update DuckDNS
 
-```bash
-curl -fsSL https://tailscale.com/install.sh | sh
-```
+1. Retrieve your Raspberry Pi's Tailscale IP:
+   ```bash
+   tailscale ip -4
+   ```
+2. Log into [DuckDNS](https://www.duckdns.org/).
+3. Update your subdomain to point to your `100.x.y.z` Tailscale IP.
+4. Copy your DuckDNS API token from the top of the account page.
 
-### Authenticate and Enable Subnet Routing:
-
-```bash
-sudo tailscale up --advertise-routes=192.168.31.0/24
-```
-
-This advertises your Raspberry Pi as a **subnet router** so you can access all local IP devices (e.g., `192.168.31.x`) from any device in your Tailscale network.
-
-> Don't forget to approve the subnet route in the [Tailscale admin panel](https://login.tailscale.com/admin/machines) under your Pi's device settings.
-
-### ⚠️ Optional Step:
-
-Subnet routing is **not required** if you're okay with accessing services using only the Pi's Tailscale IP (e.g., `100.x.x.x`). In that case, you can simply use:
+### Step 2: Create the Shared Network
 
 ```bash
-sudo tailscale up
+docker network create caddy_net
 ```
 
-### Check connection:
+### Step 3: Build & Configure Caddy
 
-```bash
-tailscale status
-```
+1. Create the Caddy project folder:
+   ```bash
+   mkdir -p ~/docker/caddy && cd ~/docker/caddy
+   ```
+2. Create the custom `Dockerfile` containing the DuckDNS DNS module:
+   ```dockerfile
+   FROM caddy:builder AS builder
 
-> After this, you can securely access your Raspberry Pi and local services using either its Tailscale IP (e.g., `100.x.x.x`) or local LAN IP (e.g., `192.168.31.x`).
+   RUN xcaddy build \
+       --with github.com/caddy-dns/duckdns
+
+   FROM caddy:latest
+
+   COPY --from=builder /usr/bin/caddy /usr/bin/caddy
+   ```
+3. Create `docker-compose.yml`:
+   ```yaml
+   services:
+     caddy:
+       build: .
+       container_name: caddy
+       restart: unless-stopped
+       ports:
+         - "80:80"
+         - "443:443"
+         - "443:443/udp" # HTTP/3 QUIC
+       environment:
+         - DUCKDNS_TOKEN=YOUR_DUCKDNS_TOKEN_HERE
+       volumes:
+         - ./Caddyfile:/etc/caddy/Caddyfile:ro
+         - caddy_data:/data
+         - caddy_config:/config
+       networks:
+         - caddy_net
+
+   volumes:
+     caddy_data:
+       name: caddy_data
+     caddy_config:
+       name: caddy_config
+
+   networks:
+     caddy_net:
+       external: true
+   ```
+   > ⚠️ **Placeholder Reminder:** Replace `YOUR_DUCKDNS_TOKEN_HERE` with your actual secret token copied from DuckDNS.
+
+4. Create your base `Caddyfile`:
+   ```caddyfile
+   {
+       email your_email@example.com
+   }
+
+   *.yourname.duckdns.org {
+       tls {
+           dns duckdns {env.DUCKDNS_TOKEN}
+       }
+
+       handle {
+           abort
+       }
+   }
+   ```
+   > ⚠️ **Placeholder Reminder:**
+   > * Replace `your_email@example.com` with your real email address (for Let's Encrypt renewal alerts).
+   > * Replace `yourname` with your registered DuckDNS subdomain prefix (e.g., `*.myserver.duckdns.org`).
+
+5. Build and run Caddy:
+   ```bash
+   docker compose up -d --build
+   ```
 
 ---
 
-## 🧩 Services
+## 🧩 Services Deployment
 
-All services are organized in individual folders, each containing its own `docker-compose.yml` file.
-
-### 📁 Clone Service Repository
-
-Create a directory for your Docker setup and clone your repository:
+### 📦 Portainer
 
 ```bash
-mkdir ~/docker
-cd ~/docker
-git clone https://github.com/RohitRajeshvdy/Raspi_Home_Server.git .
+mkdir -p ~/docker/portainer && cd ~/docker/portainer
 ```
 
-> This will clone all folders and files from your GitHub repo into the `~/docker` directory on your Raspberry Pi.
-
----
-
-## 🔧 Portainer
-
-**Portainer** is a web UI for managing your Docker containers and stacks.
-
-#### 📦 Deploy Portainer
-
-```bash
-cd ~/docker/portainer
-docker compose up -d
-```
-
-> To modify the configuration:
-```bash
-nano docker-compose.yml
-```
-
-#### 🌐 Access Portainer
-
-Open your browser and go to:
-
-```
-http://<raspberry_pi_ip>:9000
-```
-
-Set your admin password to complete the initial setup.
-
----
-
-## 🌐 NGINX Proxy Manager
-
-**NGINX Proxy Manager** provides an easy interface to manage reverse proxies, domain names, and SSL certificates.
-
-#### 📦 Deploy NGINX
-
-```bash
-cd ~/docker/nginx
-docker compose up -d
-```
-
-Access the web UI at:
-
-```
-http://<raspberry_pi_ip>:81
-```
-
-- **Default login:**
-  - Username: `admin@example.com`
-  - Password: `changeme`
-- Change credentials on first login.
-
-#### 🛡️ DuckDNS & SSL Setup
-
-1. Go to [DuckDNS](https://www.duckdns.org/) and sign in using any provider.
-2. Create a domain, e.g., `yourname.duckdns.org`
-3. Update the IP to your Raspberry Pi’s local IP and copy the token.
-
-In NGINX Proxy Manager:
-
-1. Go to **SSL Certificates** → **Add SSL Certificate**.
-2. Choose **Let’s Encrypt**, enter:
-   - Domain Names: `yourname.duckdns.org`, `*.yourname.duckdns.org`
-   - Enable **DNS Challenge**
-   - Choose **DuckDNS**
-   - Enter your DuckDNS token
-3. If validation fails, increase propagation delay to 30 seconds.
-
-> ✅ This is a one-time certificate setup. You do not need to repeat this for other services.
-
-#### 🌍 Create Proxy Host (e.g., Portainer)
-
-1. Navigate to **Hosts → Proxy Hosts → Add Proxy Host**
-2. Fill in:
-   - **Domain Names**: `portainer.yourname.duckdns.org`
-   - **Forward Hostname/IP**: `<raspberry_pi_ip>`
-   - **Forward Port**: `9000`
-   - Enable:
-     - `Websockets Support`
-     - `Block Common Exploits`
-     - `Websockets Support`
-3. Go to the **SSL** tab:
-   - Select the certificate you created
-   - Enable `Force SSL` and `HTTP/2 Support`
-
-You can now access Portainer via:
-
-```
-https://portainer.yourname.duckdns.org
-```
-
-> 🔁 Repeat these proxy host steps for each service you deploy below.
-
-## 🚫 Pi-hole
-
-### 📂 Step 1: Navigate to the Pi-hole directory
-
-```bash
-cd ~/docker/pihole
-```
-
-### ✏️ Step 2: Edit the docker-compose file
-
-```bash
-nano docker-compose.yml
-```
-
-Update the following lines:
-
-* Change the `TZ` to your timezone (e.g., `Asia/Kolkata`)
-* Set a secure `WEBPASSWORD` to access the Pi-hole dashboard
-
-Example:
-
+**`docker-compose.yml`**:
 ```yaml
-    environment:
-      - TZ=Asia/Kolkata
-      - WEBPASSWORD=your_strong_password
+services:
+  portainer:
+    container_name: portainer
+    image: portainer/portainer-ce:lts
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+    networks:
+      - caddy_net
+
+volumes:
+  portainer_data:
+    name: portainer_data
+
+networks:
+  caddy_net:
+    external: true
 ```
 
-> Modify other settings (like ports or volumes) only if needed.
-
-### ▶️ Step 3: Start Pi-hole using Docker Compose
-
+Start Portainer:
 ```bash
 docker compose up -d
 ```
 
-### 🌐 Step 4: Access the Pi-hole Web Interface
-
-Open your browser and visit:
-
+**Caddy snippet** (add inside `*.yourname.duckdns.org` in `~/docker/caddy/Caddyfile`):
+```caddyfile
+    @portainer host portainer.yourname.duckdns.org
+    handle @portainer {
+        reverse_proxy portainer:9443 {
+            transport http {
+                tls_insecure_skip_verify
+            }
+        }
+    }
 ```
-http://<your-raspberry-pi-ip>:8080
-```
+> ⚠️ **Placeholder Reminder:** Replace `yourname` with your actual DuckDNS subdomain prefix.
 
-> Log in using the password you set in the `WEBPASSWORD` field.
-
----
-
-## 🧠 How to Use Pi-hole for Network-Wide Ad Blocking
-
-Choose one of the two DNS setup options below:
-
----
-
-### ✅ Option 1: Set Router DNS (Recommended)
-
-1. Login to your router admin panel (usually `192.168.1.1` or similar).
-2. Find the DNS settings (under LAN or DHCP settings).
-3. Set the **Primary DNS** to your Raspberry Pi IP (e.g., `192.168.31.100`)
-4. Save and reboot the router.
-
-> This routes all devices on your network through Pi-hole automatically.
-
----
-
-### 🔧 Option 2: Set DNS Per Device
-
-If router DNS change isn't possible:
-
-1. On each device (PC, mobile, etc), go to network settings.
-2. Manually set the DNS to your Raspberry Pi’s IP (e.g., `192.168.31.100`)
-3. Leave the secondary DNS blank or use `1.1.1.1` as fallback (optional).
-
----
-
-🎉 Done! Pi-hole should now be actively blocking ads for your chosen devices.
-
-
-## 📈 Glances
-
-### 📂 Step 1: Navigate to the Glances directory
-
+Reload Caddy:
 ```bash
-cd ~/docker/glances
+docker exec -w /etc/caddy caddy caddy reload
 ```
 
-### ✏️ Step 2: Edit the docker-compose file
+---
 
+### 🚫 Pi-hole
+
+#### 1. Free Port 53 from systemd-resolved
+Check if port 53 is occupied:
 ```bash
-nano docker-compose.yml
+sudo ss -tulpn | grep :53
+```
+If occupied by `systemd-resolved`, disable its stub listener:
+```bash
+sudo sed -r -i.orig 's/#?DNSStubListener=yes/DNSStubListener=no/g' /etc/systemd/resolved.conf
+sudo systemctl restart systemd-resolved
 ```
 
-Update the following line:
+#### 2. Deploy Pi-hole
+```bash
+mkdir -p ~/docker/pihole && cd ~/docker/pihole
+```
 
-* Change the `TZ` to your timezone (e.g., `Asia/Kolkata`)
-
-Example:
-
+**`docker-compose.yml`**:
 ```yaml
+services:
+  pihole:
+    container_name: pihole
+    image: pihole/pihole:latest
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
     environment:
-      - TZ=Asia/Kolkata
+      TZ: 'Asia/Kolkata'
+      FTLCONF_dns_listeningMode: 'ALL' # Accepts queries over Tailscale subnet
+    volumes:
+      - './etc-pihole:/etc/pihole'
+    cap_add:
+      - NET_ADMIN
+      - SYS_NICE
+    restart: unless-stopped
+    networks:
+      - caddy_net
+
+networks:
+  caddy_net:
+    external: true
 ```
 
-> No other changes needed unless you want to adjust port mapping or volume paths.
+Start and set the admin password:
+```bash
+docker compose up -d
+docker exec -it pihole pihole setpassword
+```
 
-### ▶️ Step 3: Start Glances using Docker Compose
+**Caddy snippet**:
+```caddyfile
+    @pihole host pihole.yourname.duckdns.org
+    handle @pihole {
+        reverse_proxy pihole:80
+    }
+```
+> ⚠️ **Placeholder Reminder:** Replace `yourname` with your actual DuckDNS subdomain prefix.
 
+Reload Caddy:
+```bash
+docker exec -w /etc/caddy caddy caddy reload
+```
+
+#### 3. Route Tailscale DNS to Pi-hole
+1. Go to [Tailscale Admin Console > DNS](https://login.tailscale.com/admin/dns).
+2. Under **Nameservers**, add a **Custom** nameserver and enter your Pi's `100.x.y.z` Tailscale IP.
+3. Enable **Override local DNS**.
+
+---
+
+### 🔐 Vaultwarden
+
+```bash
+mkdir -p ~/docker/vaultwarden/data && cd ~/docker/vaultwarden
+```
+
+**`docker-compose.yml`**:
+```yaml
+services:
+  vaultwarden:
+    container_name: vaultwarden
+    image: vaultwarden/server:latest
+    restart: unless-stopped
+    environment:
+      - DOMAIN=https://vault.yourname.duckdns.org
+      - SIGNUPS_ALLOWED=true
+    volumes:
+      - ./data:/data
+    networks:
+      - caddy_net
+
+networks:
+  caddy_net:
+    external: true
+```
+> ⚠️ **Placeholder Reminder:** In `DOMAIN=https://vault.yourname.duckdns.org`, replace `yourname` with your actual DuckDNS subdomain prefix.
+
+Start Vaultwarden:
 ```bash
 docker compose up -d
 ```
 
-### 🌐 Step 4: Access the Glances Web UI
-
-Open your browser and go to:
-
+**Caddy snippet**:
+```caddyfile
+    @vault host vault.yourname.duckdns.org
+    handle @vault {
+        reverse_proxy vaultwarden:80
+    }
 ```
-http://<your-raspberry-pi-ip>:61208
+> ⚠️ **Placeholder Reminder:** Replace `yourname` with your actual DuckDNS subdomain prefix.
+
+Reload Caddy:
+```bash
+docker exec -w /etc/caddy caddy caddy reload
 ```
 
-> Glances provides real-time system monitoring directly in your browser.
+> **Security Note:** Once your primary account is created, edit `docker-compose.yml`, change `SIGNUPS_ALLOWED=false`, and run `docker compose up -d` to lock registration.
 
 ---
 
-🎉 Done! You now have system resource monitoring via Glances.
+### 🗂️ FileBrowser Quantum
 
-
-## 🟢 Uptime Kuma
-
-### 📂 Step 1: Navigate to the Uptime Kuma directory
+Configured with an in-memory `tmpfs` cache to prevent microSD wear caused by image thumbnail creation.
 
 ```bash
-cd ~/docker/uptime-kuma
+mkdir -p ~/docker/filebrowser/data && cd ~/docker/filebrowser
 ```
 
-### ▶️ Step 2: Start Uptime Kuma using Docker Compose
+**`data/config.yaml`**:
+```yaml
+server:
+  cacheDir: /home/filebrowser/data/tmp
+  sources:
+    - path: /host_home
+      name: "Home Directory"
+      config:
+        defaultEnabled: true
+    - path: /storage
+      name: "External Storage"
+      config:
+        defaultEnabled: true
+```
 
+**`docker-compose.yml`**:
+```yaml
+services:
+  filebrowser:
+    container_name: filebrowser
+    image: gtstef/filebrowser:stable
+    restart: unless-stopped
+    user: "1000:1000"
+    volumes:
+      - ${HOME}:/host_home
+      - /mnt/hdd:/storage
+      - ./data:/home/filebrowser/data
+    tmpfs:
+      - /home/filebrowser/data/tmp:size=256M,uid=1000,gid=1000
+    networks:
+      - caddy_net
+
+networks:
+  caddy_net:
+    external: true
+```
+
+Start FileBrowser:
 ```bash
 docker compose up -d
 ```
 
-> No need to edit the compose file — it's ready to go!
-
-### 🌐 Step 3: Access the Uptime Kuma Web Interface
-
-Open your browser and go to:
-
+**Caddy snippet**:
+```caddyfile
+    @files host files.yourname.duckdns.org
+    handle @files {
+        reverse_proxy filebrowser:80
+    }
 ```
-http://<your-raspberry-pi-ip>:3001
-```
+> ⚠️ **Placeholder Reminder:** Replace `yourname` with your actual DuckDNS subdomain prefix.
 
-Create an admin account on first login.
-
----
-
-### 📊 Step 4: Add Services to Monitor
-
-Once inside the dashboard:
-
-1. Click **"Add New Monitor"**.
-2. Enter a friendly name (e.g., "Pi-hole")
-3. Enter the URL/IP and port (e.g., `http://192.168.31.100:8080`)
-4. Click **"Save"**.
-
-Repeat this process for each service you want to monitor (e.g., Glances, Jellyfin, qBittorrent).
-
----
-
-🎉 Done! Uptime Kuma is now monitoring your services and will notify you of any downtime.
-
-
-## 🖼️ Immich
-
-> ⚠️ **Warning:** Immich is resource-heavy when Machine Learning is enabled. On a Raspberry Pi 4, it works perfectly fine **without** Machine Learning. You can still enable it, but expect **high RAM and CPU usage**.
-
-**Machine Learning** in Immich enables:
-
-* Face recognition
-* Object detection
-* Image classification
-* Auto-tagging
-
-If you **do not need these features**, it's strongly recommended to **comment out the entire `machine-learning` service** in the `docker-compose.yml` file to keep your system responsive.
-
----
-
-### 📂 Step 1: Navigate to the Immich directory
-
+Reload Caddy:
 ```bash
-cd ~/docker/immich
+docker exec -w /etc/caddy caddy caddy reload
 ```
-
-### ✏️ Step 2: Edit the docker-compose.yml file
-
-```bash
-nano docker-compose.yml
-```
-
-* Locate the section starting with `machine-learning:` and **comment out** that entire block using `#`.
-* Save and exit.
+*(Default credentials: `admin` / `admin`. Change immediately in Settings > Users).*
 
 ---
 
-### 🛠️ Step 3: Edit the .env file
+### 🧭 Glance Dashboard
 
+Glance provides a clean, unified homelab dashboard featuring local system stats, Pi-hole telemetry, service uptime monitors, RSS/Reddit feeds, and GitHub release notifications.
+
+#### 1. Setup Project & Environment Variables
+```bash
+mkdir -p ~/docker/glance/config && cd ~/docker/glance
+```
+
+Create a secure `.env` file to hold your sensitive tokens:
 ```bash
 nano .env
 ```
-
-Update the storage path to your mounted external drive. Example:
-
+Add the following keys:
 ```env
-UPLOAD_LOCATION=/mnt/hdd/immich
+GITHUB_TOKEN=your_github_personal_access_token_here
+PIHOLE_PASSWORD=your_pihole_v6_api_password_here
 ```
+> ⚠️ **Placeholder Reminder:**
+> * Replace `your_github_personal_access_token_here` with your GitHub PAT to enable software update checks without rate-limiting.
+> * Replace `your_pihole_v6_api_password_here` with your Pi-hole v6 App Password (configured in Pi-hole Web UI > Settings > API).
 
-> Make sure this folder exists. If not, create it using:
-
-```bash
-sudo mkdir -p /mnt/hdd/immich
-sudo chown -R pi:pi /mnt/hdd/immich
-```
-
-* `mkdir -p` creates the folder (including any missing parent directories).
-* `chown -R pi:pi` gives ownership of the folder (and all files inside) to the `pi` user.
-
----
-
-### ▶️ Step 4: Start Immich using Docker Compose
-
-```bash
-docker compose up -d
-```
-
----
-
-### 🌐 Step 5: Access the Immich Web Interface
-
-Open your browser and visit:
-
-```
-http://<your-raspberry-pi-ip>:2283
-```
-
-Create your admin account and start uploading and organizing your photos.
-
----
-
-🎉 Done! Immich is now running. Use it to back up and manage your photo library.
-
-> 🧠 If you ever upgrade to a more powerful server, you can re-enable the machine learning features for smarter photo organization.
-
-
-## 🎬 Jellyfin + 🧠 Jellyseerr
-
-### 📁 Step 1: Prepare Folder Structure
-
-Before deploying Jellyfin and Jellyseerr, create the required directory structure on your external drive:
-
-```bash
-sudo mkdir -p /mnt/hdd/data/{books,movies,shows,downloads/qbittorrent/{completed/{radarr,sonarr,unsorted},incomplete/{radarr,sonarr,unsorted},torrents}}
-sudo chown -R pi:pi /mnt/hdd/data
-```
-
-> This sets up dedicated folders for all your media content and download organization.
-
----
-
-### 📂 Step 2: Navigate to the Jellyfin directory
-
-```bash
-cd ~/docker/jellyfin
-```
-
-### ✏️ Step 3: Edit the docker-compose.yml file
-
-```bash
-nano docker-compose.yml
-```
-
-Make the following changes:
-
-* Set the correct timezone for both `jellyfin` and `jellyseerr` services:
-
+#### 2. Create Docker Compose File
+Create `docker-compose.yml`:
 ```yaml
+services:
+  glance:
+    container_name: glance
+    image: glanceapp/glance:latest
+    restart: unless-stopped
+    volumes:
+      - ./config:/app/config
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /sys:/sys:ro
+      - /:/host:ro
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
     environment:
       - TZ=Asia/Kolkata
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - PIHOLE_PASSWORD=${PIHOLE_PASSWORD}
+    networks:
+      - caddy_net
+
+networks:
+  caddy_net:
+    external: true
 ```
 
-* Update the volume mappings to match your Raspberry Pi setup:
-
+#### 3. Create Dashboard Configuration
+Create `config/glance.yml`:
 ```yaml
-    volumes:
-      - /home/mcper/docker/jellyfin/config:/config
-      - /home/mcper/docker/jellyfin/cache:/cache
-      - /mnt/hdd/data:/media
+server:
+  host: 0.0.0.0
+  port: 8080
+  proxied: true
+
+theme:
+  background-color: 50 1 6
+  primary-color: 24 97 58
+  negative-color: 209 88 54
+
+pages:
+  - name: Homelab
+    columns:
+      # COLUMN 1 (LEFT)
+      - size: small
+        widgets:
+          - type: clock
+            hour-format: 12h
+            hide-header: true
+
+          - type: calendar
+            first-day-of-week: sunday
+            hide-header: true
+
+          - type: weather
+            location: Kochi, India
+            units: metric
+            hour-format: 12h
+            hide-location: true
+            hide-header: true
+
+          - type: to-do
+
+      # COLUMN 2 (MIDDLE)
+      - size: full
+        widgets:
+          - type: monitor
+            title: Services & Uptime
+            cache: 1m
+            sites:
+              - title: Portainer
+                url: https://portainer.yourname.duckdns.org
+                icon: di:portainer
+                timeout: 3s
+              - title: Pi-hole
+                url: https://pihole.yourname.duckdns.org/admin/
+                icon: di:pi-hole
+                timeout: 3s
+              - title: FileBrowser
+                url: https://files.yourname.duckdns.org
+                icon: si:files
+                timeout: 3s
+              - title: Vaultwarden
+                url: https://vault.yourname.duckdns.org
+                icon: di:bitwarden
+                timeout: 3s
+
+          - type: group
+            widgets:
+              - type: rss
+                title: Selfh.st
+                style: detailed-list
+                limit: 10
+                collapse-after: 5
+                feeds:
+                  - url: https://selfh.st/rss/
+                    title: Selfh.st
+
+              - type: rss
+                title: Hacker News
+                style: detailed-list
+                limit: 10
+                collapse-after: 5
+                feeds:
+                  - url: https://news.ycombinator.com/rss
+                    title: Hacker News
+
+              - type: reddit
+                title: Self-Hosted
+                subreddit: selfhosted
+                show-thumbnails: true
+                limit: 10
+                collapse-after: 5
+
+              - type: reddit
+                title: Homelab
+                subreddit: homelab
+                show-thumbnails: true
+                limit: 10
+                collapse-after: 5
+
+      # COLUMN 3 (RIGHT)
+      - size: small
+        widgets:
+          - type: server-stats
+            hide-header: true
+            servers:
+              - type: local
+                name: Raspi
+                cpu-temp-sensor: cpu_thermal
+                mountpoints:
+                  "/host":
+                    name: SD Card
+
+          - type: dns-stats
+            hide-header: true
+            service: pihole-v6
+            url: https://pihole.yourname.duckdns.org
+            password: ${PIHOLE_PASSWORD}
+
+          - type: releases
+            title: Software Updates
+            token: ${GITHUB_TOKEN}
+            show-source-icon: true
+            collapse-after: 4
+            repositories:
+              - glanceapp/glance
+              - caddyserver/caddy
+              - portainer/portainer
+              - filebrowser/filebrowser
+              - dani-garcia/vaultwarden
+              - pi-hole/pi-hole
 ```
+> ⚠️ **Placeholder Reminder:** Replace every occurrence of `yourname` in `config/glance.yml` with your actual registered DuckDNS subdomain.
 
-For Jellyseerr:
-
-```yaml
-    volumes:
-      - /home/mcper/docker/jellyfin/jellyseerr/config:/app/config
-```
-
-> These mount paths ensure your media files and configurations are persisted and accessible by both containers.
-
----
-
-### ▶️ Step 4: Start the Stack
-
+#### 4. Launch Glance
 ```bash
 docker compose up -d
 ```
 
----
-
-### 🌐 Step 5: Access the Web Interfaces
-
-* **Jellyfin:**
-
+#### 5. Add Caddy Route
+Add inside `*.yourname.duckdns.org` in `~/docker/caddy/Caddyfile`:
+```caddyfile
+    @glance host glance.yourname.duckdns.org
+    handle @glance {
+        reverse_proxy glance:8080
+    }
 ```
-http://<your-raspberry-pi-ip>:8096
-```
+> ⚠️ **Placeholder Reminder:** Replace `yourname` with your actual DuckDNS subdomain prefix.
 
-* **Jellyseerr:**
-
-```
-http://<your-raspberry-pi-ip>:5055
-```
-
-Set up your admin accounts and start configuring media libraries and request handling.
-
----
-
-🎉 Done! Jellyfin will serve your media and Jellyseerr will help users request new content to be automatically downloaded.
-
-## 🌪️ \*arr Stack + qBittorrent Setup
-
-This section covers installing and configuring the full \*arr stack: qBittorrent, Sonarr, Radarr, Lidarr, Prowlarr, and Bazarr.
-
----
-
-### 📂 Step 1: Navigate to the arr directory
-
+Reload Caddy:
 ```bash
-cd ~/docker/arr
+docker exec -w /etc/caddy caddy caddy reload
 ```
 
 ---
 
-### ✏️ Step 2: Edit the `docker-compose.yml` File
+## 📜 Central Caddyfile Reference
 
-```bash
-nano docker-compose.yml
-```
+Save this consolidated configuration to `~/docker/caddy/Caddyfile`:
 
-Ensure all services use the correct data mount:
+> ⚠️ **Important Placeholders to Replace:**
+> 1. Replace `your_email@example.com` with your actual email address.
+> 2. Replace every occurrence of `yourname` with your registered DuckDNS subdomain prefix.
 
-```yaml
-    volumes:
-      - /mnt/hdd/data:/data
-```
+```caddyfile
+{
+    email your_email@example.com
+}
 
-> This is required for media file access and consistent storage.
+*.yourname.duckdns.org {
+    tls {
+        dns duckdns {env.DUCKDNS_TOKEN}
+    }
 
----
+    # Portainer
+    @portainer host portainer.yourname.duckdns.org
+    handle @portainer {
+        reverse_proxy portainer:9443 {
+            transport http {
+                tls_insecure_skip_verify
+            }
+        }
+    }
 
-### ⚙️ Step 3: Edit the `.env` File
+    # Pi-hole
+    @pihole host pihole.yourname.duckdns.org
+    handle @pihole {
+        reverse_proxy pihole:80
+    }
 
-```bash
-nano .env
-```
+    # Vaultwarden
+    @vault host vault.yourname.duckdns.org
+    handle @vault {
+        reverse_proxy vaultwarden:80
+    }
 
-Set your timezone and user IDs:
+    # FileBrowser
+    @files host files.yourname.duckdns.org
+    handle @files {
+        reverse_proxy filebrowser:80
+    }
 
-```env
-TZ=Asia/Kolkata
-PUID=1000
-PGID=1000
-```
+    # Glance Dashboard
+    @glance host glance.yourname.duckdns.org
+    handle @glance {
+        reverse_proxy glance:8080
+    }
 
----
-
-### ▶️ Step 4: Start All Services
-
-```bash
-docker compose up -d
-```
-
----
-
-### 🧲 Step 5: qBittorrent Setup
-
-After the services start, check qBittorrent logs to find the default login credentials:
-
-```bash
-docker logs qbittorrent
-```
-
-Access the web interface:
-
-```
-http://<raspberry-pi-ip>:8080
-```
-
-> Use the credentials from the logs, then immediately change them in:
-
-```
-Settings → Web UI → Username / Password
-```
-
----
-
-### 📺 Step 6: Configure the Other Services
-
-* **Sonarr:** http\://<raspberry-pi-ip>:8989
-* **Radarr:** http\://<raspberry-pi-ip>:7878
-* **Lidarr:** http\://<raspberry-pi-ip>:8686
-* **Bazarr:** http\://<raspberry-pi-ip>:6767
-* **Prowlarr:** http\://<raspberry-pi-ip>:9696
-
-All services are now running and accessible via your Pi’s IP address.
-
----
-
-### 🎥 Final Step: Follow Setup Video
-
-For full configuration of the \*arr automation system (Sonarr/Radarr + Prowlarr + qBittorrent), watch this video:
-
-▶️ [Automated Torrent Media Server Setup - YouTube](https://youtu.be/twJDyoj0tDc?si=L5tVUr_hbUi_hDaJ)
-
-It covers indexers, download clients, and organizing your media end-to-end.
-
----
-
-🎉 Done! Your automated media server is live and ready to use.
-
-## 🏠 Homarr
-
-### 📂 Step 1: Navigate to the Homarr directory
-
-```bash
-cd ~/docker/homarr
-```
-
-### ▶️ Step 2: Deploy Homarr
-
-```bash
-docker compose up -d
-```
-
-> No file edits required — it's plug and play.
-
-### 🌐 Step 3: Open the Dashboard
-
-```
-http://<raspberry-pi-ip>:7575
-```
-
-### 🧩 Step 4: Customize Your Homepage
-
-1. Add widgets for Jellyfin, Pi-hole, etc.
-2. Set logos, names, and links.
-3. Save the layout for quick service access.
-
----
-
-🎉 Homarr gives you a clean homepage to access and manage your server apps.
-
-## 🗂️ File Browser
-
-### 📂 Step 1: Navigate to the Filebrowser Directory
-
-Create a new directory for Filebrowser:
-
-```bash
-mkdir -p ~/docker/filebrowser
-cd ~/docker/filebrowser
+    # Drop any unknown host queries
+    handle {
+        abort
+    }
+}
 ```
 
 ---
 
-### ✏️ Step 2: Edit the `docker-compose.yml` File
+## 🔍 Troubleshooting & Verification
 
-The `docker-compose.yml` file already exists. Open it and edit the Filebrowser service block to:
-
-* Set the correct `user` ID (e.g., `1000:1000`) based on your system.
-* Update the `volumes` paths to point to `/mnt/hdd/filebrowser/srv` , `/mnt/hdd/filebrowser/config` and `/mnt/hdd/filebrowser/database`.
-
----
-
-### 📁 Step 3: Create and Set Permissions on Mount Folders
-
-Create required folders and assign proper permissions:
-
-```bash
-sudo mkdir -p /mnt/hdd/filebrowser/{srv,config,database}
-sudo chown -R 1000:1000 /mnt/hdd/filebrowser
-```
-
-> Ensures Filebrowser has access to read/write data and config files.
-
----
-
-### ▶️ Step 4: Start Filebrowser
-
-```bash
-docker compose up -d
-```
-
-After it starts, check the container logs for default login credentials:
-
-```bash
-docker logs filebrowser
-```
+* **Inspect Caddy SSL and Routing Logs:**
+  ```bash
+  docker logs -f caddy
+  ```
+* **Verify Caddyfile Syntax Before Reloading:**
+  ```bash
+  docker exec -w /etc/caddy caddy caddy validate
+  ```
+* **Inspect Glance Logs:**
+  ```bash
+  docker logs -f glance
+  ```
+* **Verify Port 53 Listening State:**
+  ```bash
+  sudo lsof -i :53
+  ```
+* **Check Memory Usage & Container Load:**
+  ```bash
+  docker stats --no-stream
+  ```
+* **Restart the Entire Stack Cleanly:**
+  ```bash
+  for dir in ~/docker/*/; do (cd "$dir" && docker compose restart); done
+  ```
 
 ---
 
-### 🌐 Step 5: Access the Web Interface
-
-Open your browser and visit:
-
-```
-http://<your-raspberry-pi-ip>:8443
-```
-
-Log in using the credentials from the logs.
-
-
-Once logged in, change the username and password via:
-
-```
-Settings → User Management
-```
-
----
-
-🎉 Done! You now have a simple web-based file manager accessible from your browser.
-
-## 📣 - Gotify
-
-Gotify is a simple self-hosted push notification server for sending real-time notifications.
-
-#### 📦 Installation
-
-```bash
-cd gotify
-docker compose up -d
-```
-
-#### 🔐 Default Credentials
-
-* **Username**: `admin`
-* **Password**: `changeme`
-
-After first login, it's recommended to change the password for security.
-
-You can now access Gotify via your browser at:
-
-```
-http://<your-raspberry-pi-ip>:8484
-```
-
-#### ⚙️ Creating an Application (for Uptime Kuma & Watchtower)
-
-1. Log in to the Gotify web interface.
-2. Go to the **Applications** tab.
-3. Click **Create Application**.
-4. Give your app a name like `uptimekuma` or `watchtower`.
-5. Note down the **generated token** – this is needed for integrations.
-
-Use this token in Uptime Kuma or Watchtower to send notifications to Gotify.
-
----
-
-## 🛡️ - Watchtower
-
-Watchtower automatically updates running Docker containers whenever their base images are refreshed.
-
-#### 📦 Installation
-
-```bash
-cd watchtower
-```
-
-#### ⚙️ Configuration Steps
-
-1. Open your existing `docker-compose.yml` file inside the `watchtower` directory.
-2. Edit the following environment variables under the `watchtower` service:
-
-   * **`WATCHTOWER_NOTIFICATION_GOTIFY_URL`**: Set it to your Gotify endpoint (e.g., `https://gotify.example.duckdns.org/`).
-   * **`WATCHTOWER_NOTIFICATION_GOTIFY_TOKEN`**: Paste the token generated from your Gotify application.
-   * **`WATCHTOWER_DISABLE_CONTAINERS`**: List containers you do **not** want Watchtower to auto-update (e.g., `gotify,file-browser,portainer,...`).
-   * You can also customize the schedule with `WATCHTOWER_SCHEDULE` (e.g., `"0 1 * * *"` for 1 AM daily).
-
-#### ▶️ Running Watchtower
-
-```bash
-docker compose up -d
-```
-
-Watchtower will now:
-
-* Monitor running containers.
-* Auto-update them based on your schedule.
-* Skip the containers you've listed.
-* Send update notifications to Gotify.
-
----
-
-
-## 🗄️ Backups & Data Safety
-
-*Coming soon...*
+## ⚖️ License
+This repository is published under the [MIT License](LICENSE).
