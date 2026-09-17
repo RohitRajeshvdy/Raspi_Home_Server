@@ -24,6 +24,7 @@ A lightweight, secure, self-hosted home server architecture built on the **Raspb
    - [Pi-hole](#pi-hole)
    - [Vaultwarden](#vaultwarden)
    - [FileBrowser Quantum](#filebrowser-quantum)
+   - [Glance Dashboard](#glance-dashboard)
 9. [Central Caddyfile Reference](#central-caddyfile-reference)
 10. [Troubleshooting & Verification](#troubleshooting--verification)
 
@@ -37,6 +38,7 @@ A lightweight, secure, self-hosted home server architecture built on the **Raspb
 | **Pi-hole** | `pihole.<domain>.duckdns.org` | `80` (Admin) | Network ad-blocking & local DNS |
 | **Vaultwarden** | `vault.<domain>.duckdns.org` | `80` | Bitwarden-compatible password vault |
 | **FileBrowser** | `files.<domain>.duckdns.org` | `80` | Lightweight private file management |
+| **Glance** | `glance.<domain>.duckdns.org` | `8080` | Unified feeds, system stats & service dashboard |
 
 ---
 
@@ -48,9 +50,10 @@ A lightweight, secure, self-hosted home server architecture built on the **Raspb
   * External USB 3.0 SSD/HDD formatted to `ext4` (for persistent data & files).
 * **Power:** Official 5.1V / 3.0A USB-C Raspberry Pi power supply.
 * **Network:** Gigabit Ethernet connection to your router.
-* **Accounts:**
+* **Accounts & Tokens:**
   * Free [Tailscale Account](https://tailscale.com).
   * Free [DuckDNS Account](https://www.duckdns.org) with a registered subdomain and API token.
+  * GitHub Personal Access Token (classic, `public_repo` or read-only scope for software release tracking).
 
 ---
 
@@ -60,6 +63,7 @@ A lightweight, secure, self-hosted home server architecture built on the **Raspb
 2. In the OS Customization settings:
    * Set your hostname (e.g., `raspberrypi`).
    * Set your primary non-root username and password (e.g., `pi`).
+   * Set your timezone (e.g., `Asia/Kolkata`).
    * Enable SSH with password authentication or your public SSH key.
 3. Insert the card into the Pi, connect the Ethernet cable, and power it on.
 4. SSH into the Pi from your workstation:
@@ -351,7 +355,7 @@ services:
       - "53:53/tcp"
       - "53:53/udp"
     environment:
-      TZ: 'Etc/UTC'
+      TZ: 'Asia/Kolkata'
       FTLCONF_dns_listeningMode: 'ALL' # Accepts queries over Tailscale subnet
     volumes:
       - './etc-pihole:/etc/pihole'
@@ -511,6 +515,205 @@ docker exec -w /etc/caddy caddy caddy reload
 
 ---
 
+### 🧭 Glance Dashboard
+
+Glance provides a clean, unified homelab dashboard featuring local system stats, Pi-hole telemetry, service uptime monitors, RSS/Reddit feeds, and GitHub release notifications.
+
+#### 1. Setup Project & Environment Variables
+```bash
+mkdir -p ~/docker/glance/config && cd ~/docker/glance
+```
+
+Create a secure `.env` file to hold your sensitive tokens:
+```bash
+nano .env
+```
+Add the following keys:
+```env
+GITHUB_TOKEN=your_github_personal_access_token_here
+PIHOLE_PASSWORD=your_pihole_v6_api_password_here
+```
+> ⚠️ **Placeholder Reminder:**
+> * Replace `your_github_personal_access_token_here` with your GitHub PAT to enable software update checks without rate-limiting.
+> * Replace `your_pihole_v6_api_password_here` with your Pi-hole v6 App Password (configured in Pi-hole Web UI > Settings > API).
+
+#### 2. Create Docker Compose File
+Create `docker-compose.yml`:
+```yaml
+services:
+  glance:
+    container_name: glance
+    image: glanceapp/glance:latest
+    restart: unless-stopped
+    volumes:
+      - ./config:/app/config
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /sys:/sys:ro
+      - /:/host:ro
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    environment:
+      - TZ=Asia/Kolkata
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - PIHOLE_PASSWORD=${PIHOLE_PASSWORD}
+    networks:
+      - caddy_net
+
+networks:
+  caddy_net:
+    external: true
+```
+
+#### 3. Create Dashboard Configuration
+Create `config/glance.yml`:
+```yaml
+server:
+  host: 0.0.0.0
+  port: 8080
+  proxied: true
+
+theme:
+  background-color: 50 1 6
+  primary-color: 24 97 58
+  negative-color: 209 88 54
+
+pages:
+  - name: Homelab
+    columns:
+      # COLUMN 1 (LEFT)
+      - size: small
+        widgets:
+          - type: clock
+            hour-format: 12h
+            hide-header: true
+
+          - type: calendar
+            first-day-of-week: sunday
+            hide-header: true
+
+          - type: weather
+            location: Kochi, India
+            units: metric
+            hour-format: 12h
+            hide-location: true
+            hide-header: true
+
+          - type: to-do
+
+      # COLUMN 2 (MIDDLE)
+      - size: full
+        widgets:
+          - type: monitor
+            title: Services & Uptime
+            cache: 1m
+            sites:
+              - title: Portainer
+                url: https://portainer.yourname.duckdns.org
+                icon: di:portainer
+                timeout: 3s
+              - title: Pi-hole
+                url: https://pihole.yourname.duckdns.org/admin/
+                icon: di:pi-hole
+                timeout: 3s
+              - title: FileBrowser
+                url: https://files.yourname.duckdns.org
+                icon: si:files
+                timeout: 3s
+              - title: Vaultwarden
+                url: https://vault.yourname.duckdns.org
+                icon: di:bitwarden
+                timeout: 3s
+
+          - type: group
+            widgets:
+              - type: rss
+                title: Selfh.st
+                style: detailed-list
+                limit: 10
+                collapse-after: 5
+                feeds:
+                  - url: https://selfh.st/rss/
+                    title: Selfh.st
+
+              - type: rss
+                title: Hacker News
+                style: detailed-list
+                limit: 10
+                collapse-after: 5
+                feeds:
+                  - url: https://news.ycombinator.com/rss
+                    title: Hacker News
+
+              - type: reddit
+                title: Self-Hosted
+                subreddit: selfhosted
+                show-thumbnails: true
+                limit: 10
+                collapse-after: 5
+
+              - type: reddit
+                title: Homelab
+                subreddit: homelab
+                show-thumbnails: true
+                limit: 10
+                collapse-after: 5
+
+      # COLUMN 3 (RIGHT)
+      - size: small
+        widgets:
+          - type: server-stats
+            hide-header: true
+            servers:
+              - type: local
+                name: Raspi
+                cpu-temp-sensor: cpu_thermal
+                mountpoints:
+                  "/host":
+                    name: SD Card
+
+          - type: dns-stats
+            hide-header: true
+            service: pihole-v6
+            url: https://pihole.yourname.duckdns.org
+            password: ${PIHOLE_PASSWORD}
+
+          - type: releases
+            title: Software Updates
+            token: ${GITHUB_TOKEN}
+            show-source-icon: true
+            collapse-after: 4
+            repositories:
+              - glanceapp/glance
+              - caddyserver/caddy
+              - portainer/portainer
+              - filebrowser/filebrowser
+              - dani-garcia/vaultwarden
+              - pi-hole/pi-hole
+```
+> ⚠️ **Placeholder Reminder:** Replace every occurrence of `yourname` in `config/glance.yml` with your actual registered DuckDNS subdomain.
+
+#### 4. Launch Glance
+```bash
+docker compose up -d
+```
+
+#### 5. Add Caddy Route
+Add inside `*.yourname.duckdns.org` in `~/docker/caddy/Caddyfile`:
+```caddyfile
+    @glance host glance.yourname.duckdns.org
+    handle @glance {
+        reverse_proxy glance:8080
+    }
+```
+> ⚠️ **Placeholder Reminder:** Replace `yourname` with your actual DuckDNS subdomain prefix.
+
+Reload Caddy:
+```bash
+docker exec -w /etc/caddy caddy caddy reload
+```
+
+---
+
 ## 📜 Central Caddyfile Reference
 
 Save this consolidated configuration to `~/docker/caddy/Caddyfile`:
@@ -557,6 +760,12 @@ Save this consolidated configuration to `~/docker/caddy/Caddyfile`:
         reverse_proxy filebrowser:80
     }
 
+    # Glance Dashboard
+    @glance host glance.yourname.duckdns.org
+    handle @glance {
+        reverse_proxy glance:8080
+    }
+
     # Drop any unknown host queries
     handle {
         abort
@@ -575,6 +784,10 @@ Save this consolidated configuration to `~/docker/caddy/Caddyfile`:
 * **Verify Caddyfile Syntax Before Reloading:**
   ```bash
   docker exec -w /etc/caddy caddy caddy validate
+  ```
+* **Inspect Glance Logs:**
+  ```bash
+  docker logs -f glance
   ```
 * **Verify Port 53 Listening State:**
   ```bash
